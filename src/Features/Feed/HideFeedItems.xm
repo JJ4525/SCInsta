@@ -11,7 +11,7 @@ static NSArray *removeItemsInList(NSArray *list, BOOL isFeed) {
 
             // Posts
             if (
-                ([obj isKindOfClass:%c(IGMedia)] && [((IGMedia *)obj).explorePostInFeed isEqual:@YES])
+                ([obj isKindOfClass:%c(IGMedia)] && !((IGMedia *)obj).isOrganicMedia)
                 || ([obj isKindOfClass:%c(IGFeedGroupHeaderViewModel)] && [[obj title] isEqualToString:@"Suggested Posts"])
             ) {
                 NSLog(@"[SCInsta] Removing suggested posts");
@@ -116,32 +116,12 @@ static NSArray *removeItemsInList(NSArray *list, BOOL isFeed) {
 // Suggested posts/reels
 %hook IGMainFeedListAdapterDataSource
 - (NSArray *)objectsForListAdapter:(id)arg1 {
-    NSArray *filteredObjs = removeItemsInList(%orig, YES);
-
-    // Remove loading spinner at end of feed (if 5 or less items in feed)
-    NSUInteger arrayLength = [filteredObjs count];
-
-    if (arrayLength <= 5) {
-        filteredObjs = [filteredObjs filteredArrayUsingPredicate:
-            [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *bindings) {
-                return ![obj isKindOfClass:[%c(IGSpinnerLabelViewModel) class]];
-            }]
-        ];
-    }
-
-    return filteredObjs;
+    return removeItemsInList(%orig, YES);
 }
 %end
 %hook IGSundialFeedDataSource
 - (NSArray *)objectsForListAdapter:(id)arg1 {
-    NSArray *filteredList = removeItemsInList(%orig, NO);
-
-    if ([SCIUtils getBoolPref:@"prevent_doom_scrolling"]) {
-        double reelCount = [SCIUtils getDoublePref:@"doom_scrolling_reel_count"];
-        return [filteredList subarrayWithRange:NSMakeRange(0, MIN((NSUInteger)reelCount, filteredList.count))];
-    }
-
-    return filteredList;
+    return removeItemsInList(%orig, NO);
 }
 %end
 %hook IGContextualFeedViewController
@@ -258,16 +238,6 @@ static NSArray *removeItemsInList(NSArray *list, BOOL isFeed) {
 %end
 // "Sponsored" posts on discover/search page
 %hook IGExploreListKitDataSource
-- (NSArray *)objectsForListAdapter:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"hide_ads"]) {
-        return removeItemsInList(%orig, NO);
-    }
-
-    return %orig;
-}
-%end
-// Demangled name: IGExploreViewControllerSwift.IGExploreListKitDataSource
-%hook _TtC28IGExploreViewControllerSwift26IGExploreListKitDataSource
 - (NSArray *)objectsForListAdapter:(id)arg1 {
     if ([SCIUtils getBoolPref:@"hide_ads"]) {
         return removeItemsInList(%orig, NO);

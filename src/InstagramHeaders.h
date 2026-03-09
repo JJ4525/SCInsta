@@ -3,28 +3,11 @@
 #import <UIKit/UIKit.h>
 #import "../modules/JGProgressHUD/JGProgressHUD.h"
 
-#ifdef __cplusplus
-#define _Bool bool
-#endif
-
 @interface NSURL ()
 - (id)normalizedURL; // method provided by Instagram app
 @end
 
-@interface IGActionableConfirmationToastViewModel : NSObject {
-    NSString *_text_annotatedTitleText;
-    NSString *_text_annotatedSubtitleText;
-}
-@end
-
-@interface IGActionableConfirmationToastPresenter : NSObject
-- (void)showAlertWithViewModel:(id)model isAnimated:(_Bool)animated animationDuration:(double)duration presentationPriority:(long long)priority tapActionBlock:(id)tap presentedHandler:(id)presented dismissedHandler:(id)dismissed;
-- (void)hideAlert;
-@end
-
 @interface IGRootViewController : UIViewController
-- (IGActionableConfirmationToastPresenter *)toastPresenter;
-
 - (void)addHandleLongPress; // new
 - (void)handleLongPress:(UILongPressGestureRecognizer *)sender; // new
 @end
@@ -84,11 +67,8 @@
 - (id)imageURLForWidth:(CGFloat)width;
 @end
 
-@interface IGBaseMedia : NSObject
-@property (retain, nonatomic) id explorePostInFeed;
-@end
-
-@interface IGMedia : IGBaseMedia
+@interface IGMedia : NSObject
+@property(nonatomic, readonly) BOOL isOrganicMedia;
 @property(readonly) IGVideo *video;
 @property(readonly) IGPhoto *photo;
 @end
@@ -461,31 +441,6 @@
 @interface IGSeeAllItemConfiguration : NSObject
 @property (readonly, nonatomic) long long destination;
 @end
-
-@interface IGDSMenuItem : NSObject
-@end
-
-@interface IGDirectThreadViewController : UIViewController
-- (void)markLastMessageAsSeen;
-@end
-
-@interface IGTabBarButton : UIButton
-- (void)addHandleLongPress; // new
-@end
-
-@interface IGStoryFullscreenDefaultFooterView : NSObject
-@end
-
-@interface IGDirectThreadThemePickerOption : NSObject
-@end
-
-@interface IGCreationActionBarButton : UIButton
-@end
-
-@interface IGCreationActionBarLabeledButton : NSObject
-@property (readonly, nonatomic) IGCreationActionBarButton *button;
-@end
-
 
 
 /////////////////////////////////////////////////////////////////////////////

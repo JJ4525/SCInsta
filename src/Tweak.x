@@ -2,6 +2,7 @@
 #import "InstagramHeaders.h"
 #import "Tweak.h"
 #import "Utils.h"
+#import "Settings/SCISettingsViewController.h"
 
 ///////////////////////////////////////////////////////////
 
@@ -13,9 +14,10 @@
 ///////////////////////////////////////////////////////////
 
 // * Tweak version *
-NSString *SCIVersionString = @"v1.1.1";
+NSString *SCIVersionString = @"v1.0.0";
 
 // Variables that work across features
+BOOL seenButtonEnabled = false;
 BOOL dmVisualMsgsViewedButtonEnabled = false;
 
 // Tweak first-time setup
@@ -36,12 +38,18 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
         @"dw_finger_count": @(3),
         @"dw_finger_duration": @(0.5),
         @"reels_tap_control": @"default",
+        @"reels_time_limit_enabled": @(NO),
+        @"reels_time_limit_minutes": @(20),
+        @"reels_time_limit_locked": @(NO),
+        @"reels_time_spent_seconds": @(0),
+        @"reels_time_spent_day": @"",
+        @"hide_reels_tab": @(YES),
+        @"disable_scrolling_reels": @(YES),
+        @"no_suggested_reels": @(YES),
         @"nav_icon_ordering": @"default",
         @"swipe_nav_tabs": @"default",
         @"enable_notes_customization": @(YES),
-        @"custom_note_themes": @(YES),
-        @"disable_auto_unmuting_reels": @(YES),
-        @"doom_scrolling_reel_count": @(1)
+        @"custom_note_themes": @(YES)
     };
     [[NSUserDefaults standardUserDefaults] registerDefaults:sciDefaults];
     
@@ -70,7 +78,11 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
 
             // Display settings modal on screen
             NSLog(@"[SCInsta] Displaying SCInsta first-time settings modal");
-            [SCIUtils showSettingsVC:[self window]];
+            UIViewController *rootController = [[self window] rootViewController];
+            SCISettingsViewController *settingsViewController = [SCISettingsViewController new];
+            UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:settingsViewController];
+
+            [rootController presentViewController:navigationController animated:YES completion:nil];
         }
     });
 
@@ -90,24 +102,6 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
     if ([SCIUtils getBoolPref:@"flex_app_start"]) {
         [[objc_getClass("FLEXManager") sharedManager] showExplorer];
     }
-}
-%end
-
-%hook IGDSLauncherConfig
-- (_Bool)isLiquidGlassInAppNotificationEnabled {
-    return [SCIUtils liquidGlassEnabledBool:%orig];
-}
-- (_Bool)isLiquidGlassContextMenuEnabled{
-    return [SCIUtils liquidGlassEnabledBool:%orig];
-}
-- (_Bool)isLiquidGlassToastEnabled {
-    return [SCIUtils liquidGlassEnabledBool:%orig];
-}
-- (_Bool)isLiquidGlassToastPeekEnabled {
-    return [SCIUtils liquidGlassEnabledBool:%orig];
-}
-- (_Bool)isLiquidGlassAlertDialogEnabled {
-    return [SCIUtils liquidGlassEnabledBool:%orig];
 }
 %end
 
@@ -359,7 +353,7 @@ shouldPersistLastBugReportId:(id)arg6
             
             // "Suggestions" header
             if ([[obj title] isEqualToString:@"Suggestions"]) {
-                if ([SCIUtils getBoolPref:@"no_suggested_users"]) {
+                if ([SCIUtils getBoolPref:@"hide_meta_ai"]) {
                     NSLog(@"[SCInsta] Hiding suggested chats (header: messages tab)");
 
                     shouldHide = YES;
@@ -379,7 +373,7 @@ shouldPersistLastBugReportId:(id)arg6
 
         // Suggested recipients
         else if ([obj isKindOfClass:%c(IGDirectInboxSuggestedThreadCellViewModel)]) {
-            if ([SCIUtils getBoolPref:@"no_suggested_users"]) {
+            if ([SCIUtils getBoolPref:@"hide_meta_ai"]) {
                 NSLog(@"[SCInsta] Hiding suggested chats (recipients: channels tab)");
 
                 shouldHide = YES;
@@ -390,15 +384,6 @@ shouldPersistLastBugReportId:(id)arg6
         else if ([obj isKindOfClass:%c(IGDiscoverPeopleItemConfiguration)] || [obj isKindOfClass:%c(IGDiscoverPeopleConnectionItemConfiguration)]) {
             if ([SCIUtils getBoolPref:@"no_suggested_users"]) {
                 NSLog(@"[SCInsta] Hiding suggested chats: (recipients: inbox view)");
-
-                shouldHide = YES;
-            }
-        }
-
-        // Hide notes tray
-        else if ([obj isKindOfClass:%c(IGDirectNotesTrayRowViewModel)]) {
-            if ([SCIUtils getBoolPref:@"hide_notes_tray"]) {
-                NSLog(@"[SCInsta] Hiding notes tray");
 
                 shouldHide = YES;
             }
@@ -515,16 +500,12 @@ shouldPersistLastBugReportId:(id)arg6
         BOOL shouldHide = NO;
 
         if ([SCIUtils getBoolPref:@"no_suggested_users"]) {
-            if ([obj isKindOfClass:%c(IGStoryTrayViewModel)]) {
-                NSNumber *type = [((IGStoryTrayViewModel *)obj) valueForKey:@"type"];
-                
-                // 8/9 looks to be the types for recommended stories
-                if ([type isEqual:@(8)] || [type isEqual:@(9)]) {
-                    NSLog(@"[SCInsta] Hiding suggested users: story tray");
+            // This hides as many recommended models as possible, without hiding genuine models
+            // Most recommended models share a 32 digit id, unlike normal accounts
+            if ([obj isKindOfClass:%c(IGStoryTrayViewModel)] && [obj.pk length] == 32) {
+                NSLog(@"[SCInsta] Hiding suggested users: story tray");
 
-                    shouldHide = YES;
-
-                }
+                shouldHide = YES;
             }
         }
 
@@ -547,51 +528,19 @@ shouldPersistLastBugReportId:(id)arg6
 }
 %end
 
-// Story tray expanded footer (Suggested accounts to follow)
-%hook IGStoryTraySectionController
-- (void)storyTrayControllerShowSUPOGEducationBump {
-    if ([SCIUtils getBoolPref:@"no_suggested_users"]) return;
-
-    return %orig();
-}
-%end
-
-// Modern IGDS app menus
-%hook IGDSMenu
-- (id)initWithMenuItems:(NSArray<IGDSMenuItem *> *)originalObjs edr:(BOOL)edr headerLabelText:(id)headerLabelText {
-    NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
-
-    for (id obj in originalObjs) {
-        BOOL shouldHide = NO;
-
-        // Meta AI
-        if (
-            [[obj valueForKey:@"title"] isEqualToString:@"AI images"]
-            || [[obj valueForKey:@"title"] isEqualToString:@"Meta AI"]
-        ) {
-            
-            if ([SCIUtils getBoolPref:@"hide_meta_ai"]) {
-                NSLog(@"[SCInsta] Hiding meta ai from IGDS menu");
-
-                shouldHide = YES;
-            }
-
-        }
-
-        // Populate new objs array
-        if (!shouldHide) {
-            [filteredObjs addObject:obj];
-        }
-
-    }
-
-    return %orig([filteredObjs copy], edr, headerLabelText);
-}
-%end
-
 /////////////////////////////////////////////////////////////////////////////
 
 // Confirm buttons
+
+/*
+* Long press alerts can be triggered continuously by holding down on the button
+*
+* Instead, you call the "_didTap" method from the "_didLongPress" method
+* Then, in the "_didTap" method, you make sure the confirm alert is only shown once
+*/
+
+static BOOL showingFeedItemUFIConfirm = NO;
+static BOOL showingVerticalUFIConfirm = NO;
 
 %hook IGFeedItemUFICell
 - (void)UFIButtonBarDidTapOnLike:(id)arg1 {
@@ -606,10 +555,15 @@ shouldPersistLastBugReportId:(id)arg6
 }
 
 - (void)UFIButtonBarDidTapOnRepost:(id)arg1 {
+    if (showingFeedItemUFIConfirm) return;
+
     if ([SCIUtils getBoolPref:@"repost_confirm"]) {
         NSLog(@"[SCInsta] Confirm repost triggered");
 
-        [SCIUtils showConfirmation:^(void) { %orig; }];
+        showingFeedItemUFIConfirm = YES;
+
+        [SCIUtils showConfirmation:^(void) { %orig; showingFeedItemUFIConfirm = NO; }
+                     cancelHandler:^(void) { showingFeedItemUFIConfirm = NO; }];
     }
     else {
         return %orig;
@@ -618,7 +572,9 @@ shouldPersistLastBugReportId:(id)arg6
 
 - (void)UFIButtonBarDidLongPressOnRepost:(id)arg1 {
     if ([SCIUtils getBoolPref:@"repost_confirm"]) {
-        NSLog(@"[SCInsta] Confirm repost triggered (long press ignored)");
+        NSLog(@"[SCInsta] Confirm repost triggered (long press hack)");
+
+        [self UFIButtonBarDidTapOnRepost:nil];
     }
     else {
         return %orig;
@@ -626,7 +582,9 @@ shouldPersistLastBugReportId:(id)arg6
 }
 - (void)UFIButtonBarDidLongPressOnRepost:(id)arg1 withGestureRecognizer:(id)arg2 {
     if ([SCIUtils getBoolPref:@"repost_confirm"]) {
-        NSLog(@"[SCInsta] Confirm repost triggered (long press ignored)");
+        NSLog(@"[SCInsta] Confirm repost triggered (long press hack)");
+
+        [self UFIButtonBarDidTapOnRepost:nil];
     }
     else {
         return %orig;
@@ -636,10 +594,15 @@ shouldPersistLastBugReportId:(id)arg6
 
 %hook IGSundialViewerVerticalUFI
 - (void)_didTapLikeButton:(id)arg1 {
+    if (showingVerticalUFIConfirm) return;
+
     if ([SCIUtils getBoolPref:@"like_confirm_reels"]) {
         NSLog(@"[SCInsta] Confirm reels like triggered");
 
-        [SCIUtils showConfirmation:^(void) { %orig; }];
+        showingVerticalUFIConfirm = YES;
+
+        [SCIUtils showConfirmation:^(void) { %orig; showingVerticalUFIConfirm = NO; }
+                     cancelHandler:^(void) { showingVerticalUFIConfirm = NO; }];
     }
     else {
         return %orig;
@@ -648,7 +611,9 @@ shouldPersistLastBugReportId:(id)arg6
 
 - (void)_didLongPressLikeButton:(id)arg1 {
     if ([SCIUtils getBoolPref:@"like_confirm_reels"]) {
-        NSLog(@"[SCInsta] Confirm repost triggered (long press ignored)");
+        NSLog(@"[SCInsta] Confirm reels like triggered (long press hack)");
+
+        [self _didTapLikeButton:nil];
     }
     else {
         return %orig;
@@ -656,10 +621,15 @@ shouldPersistLastBugReportId:(id)arg6
 }
 
 - (void)_didTapRepostButton:(id)arg1 {
+    if (showingVerticalUFIConfirm) return;
+
     if ([SCIUtils getBoolPref:@"repost_confirm"]) {
         NSLog(@"[SCInsta] Confirm repost triggered");
 
-        [SCIUtils showConfirmation:^(void) { %orig; }];
+        showingVerticalUFIConfirm = YES;
+
+        [SCIUtils showConfirmation:^(void) { %orig; showingVerticalUFIConfirm = NO; }
+                     cancelHandler:^(void) { showingVerticalUFIConfirm = NO; }];
     }
     else {
         return %orig;
@@ -668,7 +638,9 @@ shouldPersistLastBugReportId:(id)arg6
 
 - (void)_didLongPressRepostButton:(id)arg1 {
     if ([SCIUtils getBoolPref:@"repost_confirm"]) {
-        NSLog(@"[SCInsta] Confirm repost triggered (long press ignored)");
+        NSLog(@"[SCInsta] Confirm repost triggered (long press hack)");
+
+        [self _didTapRepostButton:nil];
     }
     else {
         return %orig;

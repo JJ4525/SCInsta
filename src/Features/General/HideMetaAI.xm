@@ -58,7 +58,7 @@
                     }
 
                     // Meta AI (Imagine)
-                    else if ([[_commandResult_command commandString] hasPrefix:@"/imagine"]) {
+                    else if ([[_commandResult_command commandString] isEqualToString:@"/imagine"]) {
                         NSLog(@"[SCInsta] Hiding meta ai: direct message composer /imagine suggestion");
 
                         shouldHide = YES;
@@ -178,123 +178,6 @@
 }
 %end
 
-// Direct sticker tray picker view
-%hook IGStickerTrayListAdapterDataSource
-- (id)objectsForListAdapter:(id)arg1 {
-    NSArray *originalObjs = %orig();
-    NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
-
-    for (id obj in originalObjs) {
-        BOOL shouldHide = NO;
-
-        if ([SCIUtils getBoolPref:@"hide_meta_ai"]) {
-
-            if ([obj isKindOfClass:%c(IGDirectUnifiedComposerAIStickerModel)]) {
-                NSLog(@"[SCInsta] Hiding meta ai: AI stickers option in sticker view");
-                
-                shouldHide = YES;
-            }
-            
-        }
-
-        // Populate new objs array
-        if (!shouldHide) {
-            [filteredObjs addObject:obj];
-        }
-    }
-
-    return [filteredObjs copy];
-}
-%end
-
-// Long press menu on messages
-// Demangled name: IGDirectMessageMenuConfiguration.IGDirectMessageMenuConfiguration
-%hook _TtC32IGDirectMessageMenuConfiguration32IGDirectMessageMenuConfiguration
-+ (id)menuConfigurationWithEligibleOptions:(id)options
-                          messageViewModel:(id)arg2
-                               contentType:(id)arg3
-                                 isSticker:(_Bool)arg4
-                            isMusicSticker:(_Bool)arg5
-                          directNuxManager:(id)arg6
-                       sessionUserDefaults:(id)arg7
-                               launcherSet:(id)arg8
-                               userSession:(id)arg9
-                                tapHandler:(id)arg10
-{
-    // 31: Restyle
-    // 41: Make AI image
-    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"NOT (SELF IN %@)", @[ @(31), @(41) ]];
-    NSArray *newOptions = [options filteredArrayUsingPredicate:predicate];
-
-    return %orig([newOptions copy], arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
-}
-%end
-
-// Expanded in-chat photo UI
-// Demangled name: IGDirectAggregatedMediaViewerComponentsSwift.IGDirectAggregatedMediaViewerViewControllerTitleViewModelObject
-%hook _TtC44IGDirectAggregatedMediaViewerComponentsSwift63IGDirectAggregatedMediaViewerViewControllerTitleViewModelObject
-- (id)initWithAuthorProfileImage:(id)arg1
-                  authorUsername:(id)arg2
-                      canForward:(_Bool)arg3
-                         canSave:(_Bool)arg4
-                   canAddToStory:(_Bool)arg5
-                canShowAIRestyle:(_Bool)arg6
-                       canUnsend:(_Bool)arg7
-                       canReport:(_Bool)arg8
-                   displayConfig:(id)arg9
-                       isPending:(_Bool)arg10
-             isMoreMenuListStyle:(_Bool)arg11
-             senderIsCurrentUser:(_Bool)arg12
-             shouldHideInfoViews:(_Bool)arg13
-                        subtitle:(id)arg14
-                      entryPoint:(long long)arg15
-                    canTapAuthor:(_Bool)arg16
-{
-    BOOL showAiRestyle = [SCIUtils getBoolPref:@"hide_meta_ai"] ? false : arg6;
-
-    return %orig(arg1, arg2, arg3, arg4, arg5, showAiRestyle, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16);
-}
-%end
-
-// AI generated DM channel themes
-%hook IGDirectThreadThemePickerViewController
-- (id)objectsForListAdapter:(id)arg1 {
-    NSArray *originalObjs = %orig();
-    NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
-
-    for (id obj in originalObjs) {
-        BOOL shouldHide = NO;
-
-        if ([SCIUtils getBoolPref:@"hide_meta_ai"]) {
-
-            if (
-                [obj isKindOfClass:%c(IGDirectThreadThemePickerOption)]
-                && [[obj valueForKey:@"themeId"] isEqualToString:@"direct_ai_theme_creation"]
-            ) {
-                NSLog(@"[SCInsta] Hiding meta ai: AI generated DM channel themes");
-                
-                shouldHide = YES;
-            }
-            
-        }
-
-        // Populate new objs array
-        if (!shouldHide) {
-            [filteredObjs addObject:obj];
-        }
-    }
-
-    return [filteredObjs copy];
-}
-%end
-
-// "Click to summarize" pill under DM navigation bar
-%hook IGDirectThreadViewMetaAISummaryFeatureController
-- (id)initWithUserSession:(id)arg1 mutableStateProvider:(id)arg2 threadViewControllerFeatureDelegate:(id)arg3 presentingViewController:(id)arg4 {
-    return nil;
-}
-%end
-
 /////////////////////////////////////////////////////////////////////////////
 
 // Explore
@@ -383,58 +266,13 @@
     NSLog(@"[SCInsta] Hiding meta ai: ai images add to story suggestion");
 
     if ([SCIUtils getBoolPref:@"hide_meta_ai"]) {
-        NSPredicate *predicate = [NSPredicate predicateWithFormat:@"NOT (SELF IN %@)", @[ @(10), @(11) ]];
+        NSPredicate *predicate = [NSPredicate predicateWithFormat:@"NOT (SELF == %@)", @(11)];
         newTools = [tools filteredArrayUsingPredicate:predicate];
     }
 
     %orig(newTools);
 
     return;
-}
-%end
-
-// AI generated fonts in text entry
-%hook IGCreationTextToolView
-- (id)initWithMenuConfiguration:(unsigned long long)configuration userSession:(id)session creationEntryPoint:(long long)point isAIFontsEnabled:(_Bool)enabled genAINuxManager:(id)manager showFontBadge:(_Bool)badge {
-    return %orig(configuration, session, point, [SCIUtils getBoolPref:@"hide_meta_ai"] ? false : enabled, manager, badge);
-}
-%end
-
-// Text rewrite in text entry
-%hook IGStoryTextMentionLocationPickerView
-- (id)initWithIsTextRewriteEnabled:(_Bool)arg1
-             isImageRewriteEnabled:(_Bool)arg2
-      isStackedToolSelectorEnabled:(_Bool)arg3
-          isMentionLocationVisible:(_Bool)arg4
-           isEnabledForFeedCaption:(_Bool)arg5
-                  isFeedEntryPoint:(_Bool)arg6
-{
-    _Bool isTextRewriteEnabled = [SCIUtils getBoolPref:@"hide_meta_ai"] ? false : arg1;
-    _Bool isImageRewriteEnabled = [SCIUtils getBoolPref:@"hide_meta_ai"] ? false : arg2;
-
-    return %orig(isTextRewriteEnabled, isImageRewriteEnabled, arg3, arg4, arg5, arg6);
-}
-%end
-
-// "Imagine background" in story editor vertical action bar
-%hook _TtC17IGCreationOSSwift19IGCreationHeaderBar
-- (void)setButtons:(id)buttons maxItems:(NSInteger)max {
-    NSArray *filteredObjs = buttons;
-
-    if ([SCIUtils getBoolPref:@"hide_meta_ai"]) {
-        filteredObjs = [filteredObjs filteredArrayUsingPredicate:
-            [NSPredicate predicateWithBlock:^BOOL(IGCreationActionBarLabeledButton *obj, NSDictionary *bindings) {
-
-                return !(
-                    obj.button
-                    && [((IGCreationActionBarButton *)obj.button).accessibilityIdentifier isEqualToString:@"contextual-background"]
-                );
-                
-            }]
-        ];
-    }
-
-    %orig(filteredObjs, max);
 }
 %end
 
@@ -535,38 +373,5 @@
         [self removeFromSuperview];
         NSLog(@"[SCInsta] Hiding meta ai: home feed meta ai button"); 
     }
-}
-%end
-
-// Share menu recipients
-%hook IGDirectRecipientListViewController
-- (id)objectsForListAdapter:(id)arg1 {
-    NSArray *originalObjs = %orig();
-    NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
-
-    for (id obj in originalObjs) {
-        BOOL shouldHide = NO;
-
-        if ([SCIUtils getBoolPref:@"hide_meta_ai"]) {
-            if ([obj isKindOfClass:%c(IGDirectRecipientCellViewModel)]) {
-
-                // Meta AI (catch-all)
-                if ([[[obj recipient] threadName] isEqualToString:@"Meta AI"]) {
-                    NSLog(@"[SCInsta] Hiding meta ai suggested as recipient (share menu)");
-
-                    shouldHide = YES;
-                }
-
-            }
-        }
-
-        // Populate new objs array
-        if (!shouldHide) {
-            [filteredObjs addObject:obj];
-        }
-
-    }
-
-    return [filteredObjs copy];
 }
 %end

@@ -42,7 +42,6 @@ typedef NS_ENUM(NSInteger, SCITableCell) {
 @property (nonatomic, strong) UIMenu *baseMenu;
 
 @property (nonatomic, strong) NSArray *navSections;
-@property (nonatomic, strong) UIViewController *navViewController;
 
 + (instancetype)staticCellWithTitle:(NSString *)title
                            subtitle:(NSString *)subtitle
@@ -89,11 +88,6 @@ typedef NS_ENUM(NSInteger, SCITableCell) {
                                subtitle:(NSString *)subtitle
                                    icon:(nullable SCISymbol *)icon
                             navSections:(NSArray *)navSections;
-
-+ (instancetype)navigationCellWithTitle:(NSString *)title
-                               subtitle:(NSString *)subtitle
-                                   icon:(nullable SCISymbol *)icon
-                         viewController:(UIViewController *)viewController;
 
 
 # pragma mark - Instance methods

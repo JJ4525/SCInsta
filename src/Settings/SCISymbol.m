@@ -15,7 +15,7 @@
 
 @implementation SCISymbol
 
-// MARK: - Instance methods
+#pragma mark - Instance methods
 
 - (instancetype)init {
     self = [super init];
@@ -44,7 +44,7 @@
     return symbol;
 }
 
-// MARK: - Class methods
+#pragma mark - Class methods
 
 + (instancetype)symbolWithName:(NSString *)name {
     SCISymbol *symbol = [[self alloc] init];

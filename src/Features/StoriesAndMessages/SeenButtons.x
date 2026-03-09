@@ -7,20 +7,18 @@
 // - Enables unlimited views of DM visual messages
 %hook IGTallNavigationBarView
 - (void)setRightBarButtonItems:(NSArray <UIBarButtonItem *> *)items {
-    NSMutableArray *new_items = [[items filteredArrayUsingPredicate:
-        [NSPredicate predicateWithBlock:^BOOL(UIView *value, NSDictionary *_) {
-            if ([SCIUtils getBoolPref:@"hide_reels_blend"]) {
-                return ![value.accessibilityIdentifier isEqualToString:@"blend-button"];
-            }
-
-            return true;
-        }]
-    ] mutableCopy];
+    NSMutableArray *new_items = [items mutableCopy];
 
     // Messages seen
     if ([SCIUtils getBoolPref:@"remove_lastseen"]) {
         UIBarButtonItem *seenButton = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"checkmark.message"] style:UIBarButtonItemStylePlain target:self action:@selector(seenButtonHandler:)];
         [new_items addObject:seenButton];
+
+        if (seenButtonEnabled) {
+            [seenButton setTintColor:SCIUtils.SCIColor_Primary];
+        } else {
+            [seenButton setTintColor:UIColor.labelColor];
+        }
     }
 
     // DM visual messages viewed
@@ -40,11 +38,12 @@
 
 // Messages seen button
 %new - (void)seenButtonHandler:(UIBarButtonItem *)sender {
-    UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:self];
-    if ([nearestVC isKindOfClass:%c(IGDirectThreadViewController)]) {
-        [(IGDirectThreadViewController *)nearestVC markLastMessageAsSeen];
-
-        [SCIUtils showToastForDuration:2.5 title:@"Marked messages as seen"];
+    if (seenButtonEnabled) {
+        seenButtonEnabled = false;
+        [sender setTintColor:UIColor.labelColor];
+    } else {
+        seenButtonEnabled = true;
+        [sender setTintColor:SCIUtils.SCIColor_Primary];
     }
 }
 // DM visual messages viewed button
@@ -52,14 +51,9 @@
     if (dmVisualMsgsViewedButtonEnabled) {
         dmVisualMsgsViewedButtonEnabled = false;
         [sender setTintColor:UIColor.labelColor];
-
-        [SCIUtils showToastForDuration:4.5 title:@"Visual messages can be replayed without expiring"];
-    }
-    else {
+    } else {
         dmVisualMsgsViewedButtonEnabled = true;
         [sender setTintColor:SCIUtils.SCIColor_Primary];
-
-        [SCIUtils showToastForDuration:4.5 title:@"Visual messages will now expire after viewing"];
     }
 }
 %end
@@ -68,6 +62,11 @@
 %hook IGDirectThreadViewListAdapterDataSource
 - (BOOL)shouldUpdateLastSeenMessage {
     if ([SCIUtils getBoolPref:@"remove_lastseen"]) {
+        // Check if messages should be shown as seen
+        if (seenButtonEnabled) {
+            return %orig;
+        }
+        
         return false;
     }
     

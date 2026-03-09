@@ -13,7 +13,7 @@
 
 @implementation SCISetting
 
-// MARK: - - initWithType
+#pragma mark - - initWithType
 
 - (instancetype)initWithType:(SCITableCell)type {
     self = [super init];
@@ -26,7 +26,7 @@
 }
 
 
-// MARK: - + staticCellWithTitle
+#pragma mark - + staticCellWithTitle
 
 + (instancetype)staticCellWithTitle:(NSString *)title
                            subtitle:(NSString *)subtitle
@@ -41,7 +41,7 @@
     return setting;
 }
 
-// MARK: - + linkCellWithTitle
+#pragma mark + linkCellWithTitle
 
 + (instancetype)linkCellWithTitle:(NSString *)title
                          subtitle:(NSString *)subtitle
@@ -74,7 +74,7 @@
     return setting;
 }
 
-// MARK: - + switchCellWithTitle
+#pragma mark + switchCellWithTitle
 
 + (instancetype)switchCellWithTitle:(NSString *)title
                            subtitle:(NSString *)subtitle
@@ -104,7 +104,7 @@
     return setting;
 }
 
-// MARK: - + stepperCellWithTitle
+#pragma mark + stepperCellWithTitle
 
 + (instancetype)stepperCellWithTitle:(NSString *)title
                             subtitle:(NSString *)subtitle
@@ -130,7 +130,7 @@
     return setting;
 }
 
-// MARK: - + buttonCellWithTitle
+#pragma mark + buttonCellWithTitle
 
 + (instancetype)buttonCellWithTitle:(NSString *)title
                            subtitle:(NSString *)subtitle
@@ -164,7 +164,7 @@
     return setting;
 }
 
-// MARK: - + navigationCellWithTitle
+#pragma mark + navigationCellWithTitle
 
 + (instancetype)navigationCellWithTitle:(NSString *)title
                                subtitle:(NSString *)subtitle
@@ -182,24 +182,8 @@
     return setting;
 }
 
-+ (instancetype)navigationCellWithTitle:(NSString *)title
-                               subtitle:(NSString *)subtitle
-                                   icon:(nullable SCISymbol *)icon
-                         viewController:(UIViewController *)viewController
-{
-    SCISetting *setting = [[self alloc] initWithType:SCITableCellNavigation];
-    
-    setting.title = title;
-    setting.subtitle = subtitle;
-    
-    setting.icon = icon;
-    setting.navViewController = viewController;
-    
-    return setting;
-}
 
-
-// MARK: -  Instance methods
+# pragma mark - Instance methods
 
 - (UIMenu *)menuForButton:(UIButton *)button {
     return [self submenuForButton:button submenu:self.baseMenu];

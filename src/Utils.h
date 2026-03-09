@@ -9,12 +9,14 @@
 #import "InstagramHeaders.h"
 #import "QuickLook.h"
 
-#import "Settings/SCISettingsViewController.h"
+#ifdef __cplusplus
+#define _Bool bool
+#endif
 
 #define SCILog(fmt, ...) \
     do { \
         NSString *tmpStr = [NSString stringWithFormat:(fmt), ##__VA_ARGS__]; \
-        os_log(OS_LOG_DEFAULT, "[SCInsta Test] %{public}s", tmpStr.UTF8String); \
+        os_log(OS_LOG_DEFAULT, "[SCInsta] %{public}s", tmpStr.UTF8String); \
     } while(0)
 
 #define SCILogId(prefix, obj) os_log(OS_LOG_DEFAULT, "[SCInsta Test] %{public}@: %{public}@", prefix, obj);
@@ -25,14 +27,11 @@
 + (double)getDoublePref:(NSString *)key;
 + (NSString *)getStringPref:(NSString *)key;
 
-+ (_Bool)liquidGlassEnabledBool:(_Bool)fallback;
-
 + (void)cleanCache;
 
 // Displaying View Controllers
 + (void)showQuickLookVC:(NSArray<id> *)items;
 + (void)showShareVC:(id)item;
-+ (void)showSettingsVC:(UIWindow *)window;
 
 // Colours
 + (UIColor *)SCIColor_Primary;
@@ -61,23 +60,14 @@
 + (BOOL)isNotch;
 
 + (BOOL)existingLongPressGestureRecognizerForView:(UIView *)view;
-
-// Alerts
 + (BOOL)showConfirmation:(void(^)(void))okHandler title:(NSString *)title;
 + (BOOL)showConfirmation:(void(^)(void))okHandler cancelHandler:(void(^)(void))cancelHandler title:(NSString *)title;
 + (BOOL)showConfirmation:(void(^)(void))okHandler;
 + (BOOL)showConfirmation:(void(^)(void))okHandler cancelHandler:(void(^)(void))cancelHandler;
 + (void)showRestartConfirmation;
-
-// Toasts
-+ (void)showToastForDuration:(double)duration title:(NSString *)title;
-+ (void)showToastForDuration:(double)duration title:(NSString *)title subtitle:(NSString *)subtitle;
++ (void)prepareAlertPopoverIfNeeded:(UIAlertController*)alert inView:(UIView*)view;
 
 // Math
 + (NSUInteger)decimalPlacesInDouble:(double)value;
-
-// Ivars
-+ (id)getIvarForObj:(id)obj name:(const char *)name;
-+ (void)setIvarForObj:(id)obj name:(const char *)name value:(id)value;
 
 @end

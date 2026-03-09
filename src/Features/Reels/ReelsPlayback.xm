@@ -29,14 +29,16 @@
 %end
 
 %hook IGSundialFeedViewController
-- (void)_refreshReelsWithParamsForNetworkRequest:(NSInteger)arg1 userDidPullToRefresh:(BOOL)arg2 {
-    if ([SCIUtils getBoolPref:@"prevent_doom_scrolling"]) {
-        IGRefreshControl *_refreshControl = MSHookIvar<IGRefreshControl *>(self, "_refreshControl");
-        [self refreshControlDidEndFinishLoadingAnimation:_refreshControl];
-
-        return;
+- (void)triggerRefreshFromTabTap {
+    if ([SCIUtils getBoolPref:@"refresh_reel_confirm"]) {
+        NSLog(@"[SCInsta] Reel refresh triggered");
+        
+        [SCIUtils showConfirmation:^(void) { %orig; } title:@"Refresh Reels"];
+    } else {
+        return %orig;
     }
-
+}
+- (void)_refreshReelsWithParamsForNetworkRequest:(NSInteger)arg1 userDidPullToRefresh:(BOOL)arg2 {
     if ([SCIUtils getBoolPref:@"refresh_reel_confirm"]) {
         NSLog(@"[SCInsta] Reel refresh triggered");
         
@@ -48,25 +50,6 @@
                              title:@"Refresh Reels"];
     } else {
         return %orig(arg1, arg2);
-    }
-}
-%end
-
-// * Disable volume/mute button triggering unmutes
-%hook IGAudioStatusAnnouncer
-- (void)_muteSwitchStateChanged:(id)changed {
-    if (![SCIUtils getBoolPref:@"disable_auto_unmuting_reels"]) {
-        %orig(changed);
-    }
-}
-- (void)_didPressVolumeButton:(id)button {
-    if (![SCIUtils getBoolPref:@"disable_auto_unmuting_reels"]) {
-        %orig(button);
-    }
-}
-- (void)_didUnplugHeadphones:(id)headphones {
-    if (![SCIUtils getBoolPref:@"disable_auto_unmuting_reels"]) {
-        %orig(headphones);
     }
 }
 %end
